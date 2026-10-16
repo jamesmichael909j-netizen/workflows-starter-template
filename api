@@ -1,0 +1,46 @@
+export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const targetUrl = req.query.url;
+
+  if (!targetUrl) {
+    return res.status(200).json({
+      status: 'ok',
+      message: 'AnimeVerse Proxy Active',
+      usage: 'Add ?url=ENCODED_URL'
+    });
+  }
+
+  try {
+    const decodedUrl = decodeURIComponent(targetUrl);
+
+    const response = await fetch(decodedUrl, {
+      method: req.method === 'POST' ? 'POST' : 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.google.com/',
+        'Origin': 'https://www.google.com'
+      },
+      body: req.method === 'POST' ? JSON.stringify(req.body) : undefined
+    });
+
+    const contentType = response.headers.get('content-type') || 'application/json';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=300');
+
+    const data = await response.arrayBuffer();
+    return res.status(response.status).send(Buffer.from(data));
+  } catch (err) {
+    return res.status(500).json({ error: err.message, url: targetUrl });
+  }
+}
